@@ -3,8 +3,10 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os"
 	"strings"
+	"time"
 
 	"./load"
 )
@@ -14,8 +16,21 @@ func main() {
 	start(problems, 5)
 }
 
+func getInput(input chan string) {
+	for {
+		cmdReader := bufio.NewReader(os.Stdin)
+		result, err := cmdReader.ReadString('\n')
+		if err != nil {
+			log.Fatal(err)
+		}
+		result = strings.Replace(result, "\n", "", -1)
+		input <- result
+	}
+}
+
 func start(problems [][]string, second int) {
-	cmdReader := bufio.NewReader(os.Stdin)
+	input := make(chan string, 1)
+	go getInput(input)
 	score := 0
 
 	for i := 0; i < len(problems); i++ {
@@ -23,17 +38,29 @@ func start(problems [][]string, second int) {
 		ques := problems[i][0]
 		fmt.Println(ques)
 
-		userInput, _ := cmdReader.ReadString('\n')
-		userInput = strings.Replace(userInput, "\n", "", -1)
+		for {
+			done := false
+			fmt.Printf("Answer:")
+			select {
+			case i := <-input:
+				if strings.Compare(ans, i) == 0 {
+					fmt.Println("Correct")
+					score++
+					done = true
+				} else {
+					fmt.Println("Incorrect")
+					done = true
+				}
 
-		if strings.Compare(ans, userInput) == 0 {
-			fmt.Println("Correct")
-			score++
-		} else {
-			fmt.Println("Incorrect")
+			case <-time.After(2 * time.Second):
+				fmt.Println("Time out")
+				done = true
+			}
+			if done {
+				break
+			}
 		}
-
 	}
 
-	fmt.Printf("Total Score: %d\n", score)
+	fmt.Printf("Total Score: %d/%d\n", score, len(problems))
 }
